@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, pprint, random, copy
+import os, pprint, random, copy, re
 
 from PIL import Image
 
@@ -142,6 +142,20 @@ def linear_layout(dimensions, horizontal=True):
 
     return layout, w, h 
 
+def build_css(layout, dimensions, image_fname):
+    pattern = '.+/(.+)\..+$'
+    rule_fmt = '.{} {{ background-image: url({}); background-position: {}px {}px; width: {}px; height: {}px; }}'
+
+    css_rules = []
+    layout, w, h = layout 
+    for i, img_data in enumerate(layout):
+        dimension = dimensions[i]
+        class_name = re.match(pattern, img_data[0]).groups()[0]
+        rule = rule_fmt.format(class_name, image_fname, img_data[1], img_data[2], dimension[1], dimension[2])
+        css_rules.append(rule)
+
+    return '\n'.join(css_rules) 
+
 def composite_layout(layout):
     layout, w, h = layout
     res = Image.new('RGBA', (w, h), (0,255,0,255))
@@ -157,7 +171,7 @@ def main():
 
     files = [os.path.join(img_dir, img) for img in os.listdir(img_dir)]
     dims = get_image_dimensions(files)
-    dims.sort(cmp=lambda a, b: a-b, key=key_extraction_algorithms['greatest_area'], 
+    dims.sort(cmp=lambda a, b: a-b, key=key_extraction_algorithms['greatest_side'], 
         reverse=True)
 #    layout = linear_layout(dims)
 #    layout = linear_layout(dims, horizontal=False)
@@ -171,6 +185,9 @@ def main():
     pprint.pprint(layout)
     res = composite_layout(layout)
     res.save('output.png') 
+    css = build_css(layout, dims, 'output.png')
+    with open('output.css', 'w') as f:
+        f.write(css)
 
 if __name__ == '__main__':
     main()
