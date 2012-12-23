@@ -47,8 +47,6 @@ def binpack_layout(dimensions):
 
     def insert(tree, dimension):
         # tree:
-        # * x, y, w, h, bottom, right, image
-#        pprint.pprint(tree)
         if tree is None: 
             # case: null leaf
             return None
@@ -58,12 +56,10 @@ def binpack_layout(dimensions):
             # case: image already exists at this node; traverse
             print('image exists in this space')
             return insert(tree['bottom'], dimension) or insert(tree['right'], dimension)
-#            return insert(tree['right'], dimension) or insert(tree['bottom'], dimension)
         if image_w > tree['w'] and image_h > tree['w']:
             # case: image larger than space in width and/or height
             print('image greater than space')
             return insert(tree['bottom'], dimension) or insert(tree['right'], dimension)
-#            return insert(tree['right'], dimension) or insert(tree['bottom'], dimension)
         if image_w == tree['w'] and image_h == tree['h']:
             print('exact fit')
             # case: image fits eactly in space
@@ -72,21 +68,22 @@ def binpack_layout(dimensions):
         elif image_w <= tree['w'] and image_h <= tree['h']:
             print('subdividing...')
             # case: image is smaller than space in width and/or height
-#            tree['w'], tree['h'] = dimension[1], dimension[2]
             bottom = copy.deepcopy(blank_tree_node)
             right = copy.deepcopy(blank_tree_node)
 
-            print (tree['h'], dimension)
+#            print (tree['h'], dimension)
             # bottom is full original width
             bottom['x'] = tree['x']
             bottom['y'] = tree['y'] + dimension[2]
             bottom['w'] = tree['w'] 
             bottom['h'] = tree['h'] - dimension[2]
+            if 0 in (bottom['h'], bottom['w']): bottom = None
             # right is reduced height, width
             right['x'] = tree['x'] + dimension[1]
             right['y'] = tree['y']
             right['w'] = tree['w'] - dimension[1] 
             right['h'] = dimension[2]
+            if 0 in (right['h'], right['w']): right = None
 
             tree['bottom'] = bottom
             tree['right'] = right
@@ -95,15 +92,50 @@ def binpack_layout(dimensions):
 
         return None
 
-    sum_w = sum(map(lambda d: d[1], dimensions))
-    sum_h = sum(map(lambda d: d[2], dimensions))
+    def grow(w, h, dimension):
+        if 0 in (w, h):
+            # case: empty tree; first image
+            tree = copy.deepcopy(blank_tree_node)
+            tree['w'], tree['h'] = dimension[1], dimension[2]
+            return tree
+        else:
+            # case: subsequent images
+            can_grow_right = h >= dimension[1]
+            grow_right = copy.deepcopy(blank_tree_node)
+            grow_right['x'], grow_right['y'] = w, 0
+            grow_right['w'], grow_right['h'] = dimension[1], h
+            right_area = grow_right['w'] * grow_right['h']
+
+            can_grow_down = w >= dimension[2]
+            grow_down = copy.deepcopy(blank_tree_node)
+            grow_down['x'], grow_down['y'] = 0, h
+            grow_down['w'], grow_down['h'] = w, dimension[2]
+            down_area = grow_down['w'] * grow_down['h'] 
+
+            if (not can_grow_down) and can_grow_right:
+                return grow_right
+            elif (not can_grow_right) and can_grow_down:
+                return grow_down
+            else:
+                right_aspect = min(grow_right['w'], grow_right['h']) / max(grow_right['w'], grow_right['h'])
+                down_aspect = min(grow_down['w'], grow_down['h']) / max(grow_down['w'], grow_down['h'])
+#                return grow_right if right_area < down_area else grow_down 
+                return grow_right if right_aspect > down_aspect else grow_down 
+
     tree = copy.deepcopy(blank_tree_node)
-    tree['w'], tree['h'] = sum_w, sum_h
 
     h, w = 0, 0
     layout = []
     for d in dimensions:
-        x, y = insert(tree, d)
+        res = insert(tree, d)
+        if res is None:
+            # case: no room for new image; grow 
+            tree = grow(w, h, d)
+#            print 'growing...'
+#            print tree
+#            print d
+            res = insert(tree, d)
+        x, y = res
         w = max(w, x+d[1])
         h = max(h, y+d[2])
         layout.append((d[0], x, y))
