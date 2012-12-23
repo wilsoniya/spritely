@@ -119,26 +119,27 @@ def binpack_layout(dimensions):
             else:
                 right_aspect = min(grow_right['w'], grow_right['h']) / max(grow_right['w'], grow_right['h'])
                 down_aspect = min(grow_down['w'], grow_down['h']) / max(grow_down['w'], grow_down['h'])
-#                return grow_right if right_area < down_area else grow_down 
                 return grow_right if right_aspect > down_aspect else grow_down 
 
     tree = copy.deepcopy(blank_tree_node)
 
     h, w = 0, 0
     layout = []
+    trees = [tree]
+
     for d in dimensions:
-        res = insert(tree, d)
+        res = None
+        for tree in trees:
+            res = insert(tree, d)
+            if res: break;
         if res is None:
-            # case: no room for new image; grow 
             tree = grow(w, h, d)
-#            print 'growing...'
-#            print tree
-#            print d
+            trees.append(tree)
             res = insert(tree, d)
         x, y = res
         w = max(w, x+d[1])
         h = max(h, y+d[2])
-        layout.append((d[0], x, y))
+        layout.append((d[0], x, y)) 
 
     return (layout, w, h) 
 
@@ -159,7 +160,7 @@ def linear_layout(dimensions, horizontal=True):
 
 def composite_layout(layout):
     layout, w, h = layout
-    res = Image.new('RGBA', (w, h), (255,255,255,255))
+    res = Image.new('RGBA', (w, h), (0,255,0,255))
 
     for img_data in layout:
         image = Image.open(img_data[0])
@@ -179,6 +180,12 @@ def main():
 #    layout = linear_layout(dims)
 #    layout = linear_layout(dims, horizontal=False)
     layout = binpack_layout(dims)
+    binpack_h, binpack_w = layout[1], layout[2]
+    total_image_area = sum(map(lambda d: d[1]*d[2], dims))
+    binpack_area = binpack_h*binpack_w
+    print('total image area: {}'.format(total_image_area))
+    print('binpack area: {}'.format(binpack_area))
+    print('fill rate: {}'.format((total_image_area*1.0)/(binpack_area*1.0)))
     pprint.pprint(layout)
     res = composite_layout(layout)
     res.save('output.png')
