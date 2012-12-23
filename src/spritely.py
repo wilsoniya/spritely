@@ -7,8 +7,8 @@ from PIL import Image
 key_extraction_algorithms = {
     'greatest_side': lambda i: max(i[1], i[2]),
     'greatest_area': lambda i: i[1]*i[2],
-    'greatest_height': lambda i: i[1],
-    'greatest_width': lambda i: i[2],
+    'greatest_height': lambda i: i[2],
+    'greatest_width': lambda i: i[1],
     'random': lambda i: random.choice(i[1:3]),
 }
 
@@ -20,25 +20,6 @@ def get_image_dimensions(image_paths):
         sizes.append((path, width, height))
 
     return sizes
-
-#def pack_space(x, y, w, h, images):
-#    # return list of image positions and remaining images
-#    pass
-#
-#def layout_images(dimensions):
-#    ox, oy = 0, 0
-#    layout = {}
-#
-#    for i, d in enumerate(dimensions):
-#        if i == 0: 
-#            # first image, place at origin
-#            layout[d[0]] = 0,0
-#            ox, oy = d[1], d[2]
-#        else:
-#            # non-first image; compute position
-#            area = d[1]*d[2]
-#            # compute right-branch scenario
-#            # compute bottom-branch scenario
 
 def binpack_layout(dimensions):
     blank_tree_node = { 
@@ -100,13 +81,13 @@ def binpack_layout(dimensions):
             return tree
         else:
             # case: subsequent images
-            can_grow_right = h >= dimension[1]
+            can_grow_right = h >= dimension[2]
             grow_right = copy.deepcopy(blank_tree_node)
             grow_right['x'], grow_right['y'] = w, 0
             grow_right['w'], grow_right['h'] = dimension[1], h
             right_area = grow_right['w'] * grow_right['h']
 
-            can_grow_down = w >= dimension[2]
+            can_grow_down = w >= dimension[1]
             grow_down = copy.deepcopy(blank_tree_node)
             grow_down['x'], grow_down['y'] = 0, h
             grow_down['w'], grow_down['h'] = w, dimension[2]
@@ -133,7 +114,10 @@ def binpack_layout(dimensions):
             res = insert(tree, d)
             if res: break;
         if res is None:
+            print 'grow'
             tree = grow(w, h, d)
+            pprint.pprint(tree)
+            pprint.pprint(d)
             trees.append(tree)
             res = insert(tree, d)
         x, y = res
@@ -169,13 +153,11 @@ def composite_layout(layout):
     return res
 
 def main():
-    """docstring for main"""
-
     img_dir = 'test'
 
     files = [os.path.join(img_dir, img) for img in os.listdir(img_dir)]
     dims = get_image_dimensions(files)
-    dims.sort(cmp=lambda a, b: a-b, key=key_extraction_algorithms['greatest_side'], 
+    dims.sort(cmp=lambda a, b: a-b, key=key_extraction_algorithms['greatest_area'], 
         reverse=True)
 #    layout = linear_layout(dims)
 #    layout = linear_layout(dims, horizontal=False)
@@ -188,9 +170,7 @@ def main():
     print('fill rate: {}'.format((total_image_area*1.0)/(binpack_area*1.0)))
     pprint.pprint(layout)
     res = composite_layout(layout)
-    res.save('output.png')
-
-
+    res.save('output.png') 
 
 if __name__ == '__main__':
     main()
