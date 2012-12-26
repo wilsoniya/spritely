@@ -144,7 +144,7 @@ def linear_layout(dimensions, horizontal=True):
 
 def build_css(layout, dimensions, image_fname):
     pattern = '.+/(.+)\..+$'
-    rule_fmt = '.{} {{ background-image: url({}); background-position: {}px {}px; width: {}px; height: {}px; }}'
+    rule_fmt = '.{} {{ background-image: url({}); background-position: -{}px -{}px; width: {}px; height: {}px; }}'
 
     css_rules = []
     layout, w, h = layout 
